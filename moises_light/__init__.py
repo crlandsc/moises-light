@@ -1,0 +1,44 @@
+from .moises_light import MoisesLight
+
+__version__ = '0.1.0'
+
+_TRANSFORMER_PARAMS = {
+    'heads': 4,
+    'dim_head': 32,
+    'ff_mult': 2,
+    'attn_dropout': 0.0,
+    'proj_dropout': 0.0,
+    'ff_dropout': 0.0,
+    'flash_attn': True,
+}
+
+# All presets are fully explicit -- every constructor param is specified so presets
+# remain stable even if model defaults change in future versions.
+_BASE = dict(
+    sources=['vocals', 'drums', 'bass', 'other'],
+    audio_channels=2,
+    n_fft=6144,
+    hop_size=1024,
+    win_size=6144,
+    n_enc=3,
+    n_dec=1,
+    n_split_enc=3,
+    n_split_dec=1,
+    bn_factor=4,
+    normalized=True,
+    transformer_params=_TRANSFORMER_PARAMS,
+)
+
+configs = {
+    # Paper-faithful: truncated spectrum (0-14.7 kHz)
+    'paper_large':         {**_BASE, 'G': 56, 'n_bands': 4, 'freq_dim': 2048, 'n_rope': 5},  # 4,660,592 params
+    'paper_small':         {**_BASE, 'G': 32, 'n_bands': 4, 'freq_dim': 2048, 'n_rope': 6},  # 2,520,592 params
+
+    # Fullband matched-param: full spectrum (0-22 kHz), similar param budget
+    'fullband_large':      {**_BASE, 'G': 60, 'n_bands': 6, 'freq_dim': 3072, 'n_rope': 5},  # 4,948,612 params
+    'fullband_small':      {**_BASE, 'G': 36, 'n_bands': 6, 'freq_dim': 3072, 'n_rope': 6},  # 2,824,244 params
+
+    # Fullband wide: full spectrum, matched per-group capacity to paper
+    'fullband_large_wide': {**_BASE, 'G': 84, 'n_bands': 6, 'freq_dim': 3072, 'n_rope': 5},  # 8,354,908 params
+    'fullband_small_wide': {**_BASE, 'G': 48, 'n_bands': 6, 'freq_dim': 3072, 'n_rope': 6},  # 4,102,712 params
+}

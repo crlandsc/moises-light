@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moises-light"
+version = "0.1.0"
+description = "Moises-Light: Resource-efficient Band-split U-Net for Music Source Separation"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Christopher Landschoot", email = "crlandschoot@gmail.com"},
+]
+keywords = ["music source separation", "pytorch", "audio", "deep learning", "u-net"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=2.0",
+    "einops",
+    "rotary-embedding-torch",
+]
+
+[project.urls]
+Repository = "https://github.com/crlandsc/moises-light"
+
+[tool.setuptools.packages.find]
+include = ["moises_light*"]

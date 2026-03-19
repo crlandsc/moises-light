@@ -149,7 +149,7 @@ for batch in dataloader:
 
 ## Known Limitations
 
-- **MPS (Apple Silicon)**: `torch.istft` does not support MPS. The model automatically falls back to CPU for iSTFT, which adds overhead. This is a PyTorch limitation, not a model issue.
+- **MPS (Apple Silicon)**: There is a bug in the MPS implementation of `torch.istft`. The model automatically falls back to CPU for iSTFT when on MPS, which adds overhead. This is a PyTorch limitation, not a model issue.
 - **Frequency truncation**: Paper presets zero frequencies above ~14.7 kHz. Use fullband presets if high-frequency content matters.
 
 ## Citation

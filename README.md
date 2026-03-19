@@ -2,7 +2,7 @@
 
 [![LICENSE](https://img.shields.io/github/license/crlandsc/moises-light)](https://github.com/crlandsc/moises-light/blob/main/LICENSE) [![GitHub Repo stars](https://img.shields.io/github/stars/crlandsc/moises-light)](https://github.com/crlandsc/moises-light/stargazers) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/moises-light)](https://pypi.org/project/moises-light/) [![PyPI - Version](https://img.shields.io/pypi/v/moises-light)](https://pypi.org/project/moises-light/) [![Number of downloads from PyPI per month](https://img.shields.io/pypi/dm/moises-light)](https://pypi.org/project/moises-light/)
 
-This is an unofficial PyTorch implementation of the Moises-Light architecture from ["Moises-Light: Resource-efficient Band-split U-Net for Music Source Separation"](https://arxiv.org/abs/2510.06785) (Hung et al., WASPAA 2025). The paper does not release code; this is an independent implementation based on the paper's description and the open-source implementations of [DTTNet](https://github.com/JacobChen258/DTTNet-Unofficial), [BS-RoFormer](https://github.com/lucidrains/BS-RoFormer), and [SCNet](https://github.com/starrytong/SCNet).
+This is an unofficial PyTorch implementation of the Moises-Light architecture from ["Moises-Light: Resource-efficient Band-split U-Net for Music Source Separation"](https://arxiv.org/abs/2510.06785) (Hung et al., WASPAA 2025). The paper does not release code; this is an independent implementation based on the paper's description and the open-source implementations of [DTTNet](https://github.com/junyuchen-cjy/DTTNet-Pytorch), [BS-RoFormer](https://gitlab.com/lucidrains/BS-RoFormer), and [SCNet](https://github.com/starrytong/SCNet).
 
 ## Installation
 
@@ -30,7 +30,7 @@ pip install -e .
 
 - [PyTorch](https://pytorch.org/) (>=2.0)
 - [einops](https://github.com/arogozhnikov/einops)
-- [rotary-embedding-torch](https://github.com/lucidrains/rotary-embedding-torch)
+- [rotary-embedding-torch](https://gitlab.com/lucidrains/rotary-embedding-torch)
 
 ## Quick Start
 
@@ -91,7 +91,7 @@ Full spectrum with the same per-group channel capacity as the paper models.
 
 ![Moises-Light Architecture](https://raw.githubusercontent.com/crlandsc/moises-light/main/images/moises_light_architecture.png)
 
-Moises-Light builds on the [DTTNet](https://github.com/JacobChen258/DTTNet-Unofficial) foundation (a symmetric U-Net with TFC-TDF encoder/decoder blocks and dual-path RNN bottleneck) and integrates improvements from [BS-RoFormer](https://github.com/lucidrains/BS-RoFormer) and [SCNet](https://github.com/starrytong/SCNet):
+Moises-Light builds on the [DTTNet](https://github.com/junyuchen-cjy/DTTNet-Pytorch) foundation (a symmetric U-Net with TFC-TDF encoder/decoder blocks and dual-path RNN bottleneck) and integrates improvements from [BS-RoFormer](https://gitlab.com/lucidrains/BS-RoFormer) and [SCNet](https://github.com/starrytong/SCNet):
 
 - **Band splitting via group convolutions** (inspired by [BSRNN](https://arxiv.org/abs/2209.15174)/[BS-RoFormer](https://arxiv.org/abs/2309.02612)): Instead of [DTTNet](https://arxiv.org/abs/2309.08684)'s full-spectrum convolutions, the STFT is divided into `n_bands` equal-width subbands and processed with group convolutions (`Split Module`). This replaces [DTTNet](https://arxiv.org/abs/2309.08684)'s first/last 1x1 convolutions and dramatically reduces parameters compared to the original band-split MLPs in [BSRNN](https://arxiv.org/abs/2209.15174).
 - **Split and Merge Module** (replaces [DTTNet](https://arxiv.org/abs/2309.08684)'s TFC-TDF V3 blocks): Group conv blocks with `n_bands` groups replace the original TFC layers, so each band is processed independently. The TDF (Time-Distributed Frequency FC) bottleneck is retained but now operates on per-band frequency dimensions (`freq_dim / n_bands`), which is `n_bands` times cheaper.

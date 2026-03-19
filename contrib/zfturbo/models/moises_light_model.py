@@ -4,8 +4,8 @@ from moises_light import MoisesLight
 class MoisesLightModel(MoisesLight):
     """MoisesLight adapted for ZFTurbo Music-Source-Separation-Training.
 
-    Operates in per-stem mode: forward(x) returns [B, C, L] for the target stem.
-    Set target_instrument in the config to select which stem to train.
+    With target_instrument set: forward(x) returns [B, C, L] for that stem.
+    Without target_instrument: forward(x) returns [B, S*C, L] (stems flattened into channels).
     """
     def __init__(self, target_instrument=None, **kwargs):
         super().__init__(**kwargs)

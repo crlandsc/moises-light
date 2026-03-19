@@ -64,13 +64,11 @@ class MoisesLight(nn.Module):
         freq_band = freq_dim // n_bands        # 512
 
         # Frequency truncation tradeoff:
-        # STFT produces n_bins=3073 bins, but only freq_dim=2048 are kept.
-        # At 44.1kHz with n_fft=6144, each bin ~ 7.2 Hz, so 2048 bins ~ 14.7 kHz.
-        # Everything above this is zeroed in the output (zero-padded for iSTFT).
-        # This is a deliberate efficiency concession -- hi-hats, vocal air, cymbal
-        # shimmer, and synth brightness above ~15 kHz are NOT recovered.
-        # The truncation saves ~33% compute through the entire U-Net and gives
-        # clean band-split math (2048 / 4 bands = 512 bins per band).
+        # STFT produces n_bins bins, but only freq_dim are kept (rest zero-padded
+        # for iSTFT). E.g. paper presets: 2048/3073 bins ~ 14.7 kHz cutoff;
+        # fullband presets: 3072/3073 bins ~ 22 kHz (near-lossless).
+        # Truncation saves compute through the entire U-Net and gives clean
+        # band-split math (freq_dim / n_bands bins per band).
 
         # STFT config
         self.stft_config = {
@@ -185,7 +183,8 @@ class MoisesLight(nn.Module):
         x = torch.view_as_real(x)                                     # [B*C, F_full, T, 2]
         x = x.permute(0, 3, 1, 2)                                     # [B*C, 2, F_full, T]
         x = x.reshape(B, self.audio_channels * 2, -1, x.shape[-1])   # [B, 4, F_full, T]
-        x = x[:, :, :self.freq_dim, :]                                 # [B, 4, 2048, T]
+        x = x[:, :, :self.freq_dim, :]                                 # [B, n_stft_ch, freq_dim, T]
+        # Detach so mask path doesn't backprop through the original STFT
         x_orig = x.detach()
 
         # --- Normalize ---
@@ -194,10 +193,10 @@ class MoisesLight(nn.Module):
         x = (x - mean) / (1e-5 + std)
 
         # --- Band split ---
-        x = self._band_split(x)        # [B, 16, 512, T]
+        x = self._band_split(x)        # [B, n_stft_ch*n_bands, freq_band, T]
 
         # --- First conv ---
-        x = self.first_conv(x)         # [B, G, 512, T]
+        x = self.first_conv(x)         # [B, G, freq_band, T]
 
         # --- Encoder ---
         skips = []
@@ -221,20 +220,20 @@ class MoisesLight(nn.Module):
             x = x * skips.pop()
 
         # --- Final conv ---
-        x = self.final_conv(x)         # [B, 16, 512, T]
+        x = self.final_conv(x)         # [B, n_stft_ch*n_bands, freq_band, T]
 
         # --- Band merge ---
-        x = self._band_merge(x)        # [B, 4, 2048, T]
+        x = self._band_merge(x)        # [B, n_stft_ch, freq_dim, T]
 
         # --- Source head ---
-        x = self.source_head(x)        # [B, S*4, 2048, T]
+        x = self.source_head(x)        # [B, S*n_stft_ch, freq_dim, T]
 
         # --- Output: mask or denorm, then iSTFT ---
         S = len(self.sources)
         n = self.audio_channels * 2     # 4
 
         # Reshape to per-source
-        x = x.reshape(B, S, n, self.freq_dim, -1)    # [B, S, 4, 2048, T]
+        x = x.reshape(B, S, n, self.freq_dim, -1)    # [B, S, n_stft_ch, freq_dim, T]
         if self.use_mask:
             # Masking: multiply network output by unnormalized original STFT
             x = x * x_orig.unsqueeze(1)
@@ -244,7 +243,7 @@ class MoisesLight(nn.Module):
 
         # Freq zero-pad back to n_fft//2+1 for iSTFT
         T_stft = x.shape[-1]
-        x = x.reshape(B * S, n, self.freq_dim, T_stft)            # [B*S, 4, 2048, T]
+        x = x.reshape(B * S, n, self.freq_dim, T_stft)            # [B*S, n_stft_ch, freq_dim, T]
         freq_pad = self.freq_pad.expand(B * S, -1, -1, T_stft)
         x = torch.cat([x, freq_pad], dim=2)                     # [B*S, 4, 3073, T]
 

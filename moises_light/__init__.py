@@ -12,8 +12,8 @@ _TRANSFORMER_PARAMS = {
     'flash_attn': True,
 }
 
-# All presets are fully explicit -- every constructor param is specified so presets
-# remain stable even if model defaults change in future versions.
+# Shared defaults. Per-preset params (G, n_bands, freq_dim, n_rope) are merged
+# in the configs dict below, so each final preset is fully explicit.
 _BASE = dict(
     sources=['vocals', 'drums', 'bass', 'other'],
     audio_channels=2,

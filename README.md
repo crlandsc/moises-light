@@ -114,7 +114,7 @@ This is an independent implementation — the paper does not release code. The f
 
 - **Z-score normalization**: The paper does not mention input normalization. I apply Z-score normalization (zero mean, unit variance) to the STFT features before the U-Net, inspired by [HTDemucs](https://arxiv.org/abs/2211.08553)-style preprocessing. This is standard practice in similar architectures and stabilizes training.
 
-- **Multi-stem output**: The paper trains separate per-stem models (4x ~5M params for VDBO). This implementation outputs all stems simultaneously via a shared encoder and source head, as this paradigm has proven effective in other U-Net models like [HTDemucs](https://arxiv.org/abs/2211.08553) and [SCNet](https://arxiv.org/abs/2401.13276). To reproduce the paper's approach, train 4 separate single-stem models. See [Multi-Stem vs Per-Stem](#multi-stem-vs-per-stem).
+- **Multi-stem output**: The paper trains separate per-stem models (4x ~5M params for VDBO). This implementation outputs all stems simultaneously via a shared encoder and source head, as this paradigm has proven effective in other U-Net models like [HTDemucs](https://arxiv.org/abs/2211.08553) and [SCNet](https://arxiv.org/abs/2401.13276). To reproduce the paper's approach, train 4 separate single-stem models (e.g., `MoisesLight(sources=['vocals'])`).
 
 ## Key Parameters
 
@@ -172,14 +172,3 @@ Contributions are welcome! Please open an issue or submit a pull request if you 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-
-
-## Key Features
-
-- Spectral-only U-Net with internal STFT/iSTFT
-- Equal-width band splitting via group convolutions
-- Dual-path RoPE transformer bottleneck
-- Asymmetric encoder/decoder (3 heavy encoder stages, 1 heavy + 2 light decoder stages)
-- Multi-stem output: all stems in a single forward pass (unlike the paper's per-stem approach)
-- 6 preset configurations from 2.5M to 8.4M parameters

@@ -26,6 +26,7 @@ _BASE = dict(
     n_split_dec=1,
     bn_factor=4,
     normalized=True,
+    use_mask=True,
     transformer_params=_TRANSFORMER_PARAMS,
 )
 

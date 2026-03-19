@@ -111,6 +111,29 @@ def test_g_divisibility_validation():
         MoisesLight(G=50, n_bands=6)
 
 
+def test_use_mask_default_true():
+    model = MoisesLight(**configs['paper_large'])
+    assert model.use_mask is True
+
+
+def test_forward_direct_generation():
+    """use_mask=False: direct spectrogram generation with denormalization."""
+    cfg = {**configs['paper_large'], 'use_mask': False}
+    model = MoisesLight(**cfg)
+    x = torch.randn(1, 2, 264600)
+    with torch.no_grad():
+        y = model(x)
+    assert y.shape == (1, 4, 2, 264600)
+
+
+def test_direct_generation_param_count_unchanged():
+    """use_mask adds no parameters."""
+    cfg = {**configs['paper_large'], 'use_mask': False}
+    model = MoisesLight(**cfg)
+    total = sum(p.numel() for p in model.parameters())
+    assert total == EXPECTED_PARAMS['paper_large']
+
+
 def test_channel_divisibility():
     """All channel dims must be divisible by n_bands."""
     for G in [32, 48, 56, 64]:

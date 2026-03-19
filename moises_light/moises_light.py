@@ -36,6 +36,7 @@ class MoisesLight(nn.Module):
         bn_factor=4,
         transformer_params=None,
         normalized=True,
+        use_mask=True,
     ):
         super().__init__()
 
@@ -49,6 +50,7 @@ class MoisesLight(nn.Module):
         if sources is None:
             sources = ['vocals', 'drums', 'bass', 'other']
         self.sources = sources
+        self.use_mask = use_mask
         self.audio_channels = audio_channels
         self.n_fft = n_fft
         self.hop_size = hop_size
@@ -227,13 +229,18 @@ class MoisesLight(nn.Module):
         # --- Source head ---
         x = self.source_head(x)        # [B, S*4, 2048, T]
 
-        # --- Output: mask, denorm, iSTFT ---
+        # --- Output: mask or denorm, then iSTFT ---
         S = len(self.sources)
         n = self.audio_channels * 2     # 4
 
-        # Reshape to per-source and apply mask to original STFT
+        # Reshape to per-source
         x = x.reshape(B, S, n, self.freq_dim, -1)    # [B, S, 4, 2048, T]
-        x = x * x_orig.unsqueeze(1)                # broadcast multiply
+        if self.use_mask:
+            # Masking: multiply network output by unnormalized original STFT
+            x = x * x_orig.unsqueeze(1)
+        else:
+            # Direct generation: denormalize the network output
+            x = x * std.unsqueeze(1) + mean.unsqueeze(1)
 
         # Freq zero-pad back to n_fft//2+1 for iSTFT
         T_stft = x.shape[-1]

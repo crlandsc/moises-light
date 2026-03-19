@@ -67,7 +67,8 @@ def test_configs_has_all_presets():
 
 def test_configs_version():
     from moises_light import __version__
-    assert __version__ == '0.1.0'
+    assert isinstance(__version__, str)
+    assert __version__ != 'unknown'
 
 
 # --- Gradient flow ---

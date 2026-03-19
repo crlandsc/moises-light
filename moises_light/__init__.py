@@ -1,6 +1,11 @@
+from importlib.metadata import version, PackageNotFoundError
+
 from .moises_light import MoisesLight
 
-__version__ = '0.1.0'
+try:
+    __version__ = version('moises-light')
+except PackageNotFoundError:
+    __version__ = 'unknown'
 
 _TRANSFORMER_PARAMS = {
     'heads': 4,

@@ -46,10 +46,10 @@ class DualPathRoPEBottleneck(nn.Module):
     """Full bottleneck: 1 SplitAndMerge + N_RoPE dual-path RoPE blocks."""
 
     def __init__(self, channels, n_bands, n_split, freq_dim, bn_factor,
-                 n_rope, transformer_params):
+                 n_rope, transformer_params, norm, act):
         super().__init__()
         self.split_merge = SplitAndMergeModule(
-            channels, n_bands, n_split, freq_dim, bn_factor
+            channels, n_bands, n_split, freq_dim, bn_factor, norm, act
         )
         self.rope_blocks = nn.ModuleList([
             DualPathRoPEBlock(channels, transformer_params)

@@ -37,7 +37,7 @@ def get_act(act_name):
         return nn.ReLU()
     elif act_name == 'LeakyReLU':
         return nn.LeakyReLU()
-    elif act_name == 'LeakyReLU':
+    elif act_name == 'Softplus':
         return nn.Softplus()
     elif act_name == 'SiLU':
         return nn.SiLU()

@@ -33,7 +33,8 @@ class MoisesLight(nn.Module):
         n_split_enc=3,
         n_split_dec=1,
         n_rope=5,
-        bn_factor=4,
+        bn_factor=8,
+        edge_kernel_size=3,
         transformer_params=None,
         normalized=True,
         use_mask=True,
@@ -83,8 +84,8 @@ class MoisesLight(nn.Module):
         # Frequency zero-padding for iSTFT reconstruction
         self.register_buffer('freq_pad', torch.zeros(1, n_stft_channels, n_bins - freq_dim, 1))
 
-        # --- First conv: SplitModule K=1 (expand channels) ---
-        self.first_conv = SplitModule(n_stft_channels * n_bands, G, n_bands, kernel_size=1)
+        # --- First conv: SplitModule (expand channels) ---
+        self.first_conv = SplitModule(n_stft_channels * n_bands, G, n_bands, kernel_size=edge_kernel_size)
 
         # --- Encoder: N_enc blocks of SplitAndMerge + TimeDown ---
         self.encoder_blocks = nn.ModuleList()
@@ -104,9 +105,7 @@ class MoisesLight(nn.Module):
             'flash_attn': True,
         }
         tp = transformer_params if transformer_params is not None else default_tp
-        self.bottleneck = DualPathRoPEBottleneck(
-            c, n_bands, n_split_enc, freq_band, bn_factor, n_rope, tp
-        )
+        self.bottleneck = DualPathRoPEBottleneck(c, n_bands, n_split_enc, freq_band, bn_factor, n_rope, tp)
 
         # --- Decoder (asymmetric): n_dec heavy + (n_enc - n_dec) light ---
         # Heavy stages (deepest, with SplitAndMerge processing)
@@ -125,11 +124,18 @@ class MoisesLight(nn.Module):
             self.dec_light_us.append(TimeUpsample(c, c - G))
             c -= G
 
-        # --- Final conv: SplitModule K=1 (reduce channels) ---
-        self.final_conv = SplitModule(c, n_stft_channels * n_bands, n_bands, kernel_size=1)
+        # --- Final conv: SplitModule (reduce channels) ---
+        self.final_conv = nn.Conv2d(
+            c, n_stft_channels * n_bands, edge_kernel_size,
+            stride=1, padding=edge_kernel_size // 2, groups=n_bands
+        )
 
         # --- Source head: expand to multi-source masks (after band merge) ---
-        self.source_head = nn.Conv2d(n_stft_channels, len(sources) * n_stft_channels, 1)
+        # Single-source: no extra conv (paper-faithful). Multi-source: 1x1 fan-out.
+        if len(sources) > 1:
+            self.source_head = nn.Conv2d(n_stft_channels, len(sources) * n_stft_channels, 1)
+        else:
+            self.source_head = None
 
     def _band_split(self, x):
         """[B, C, F, T] -> [B, C*N_band, F/N_band, T]
@@ -225,8 +231,9 @@ class MoisesLight(nn.Module):
         # --- Band merge ---
         x = self._band_merge(x)        # [B, n_stft_ch, freq_dim, T]
 
-        # --- Source head ---
-        x = self.source_head(x)        # [B, S*n_stft_ch, freq_dim, T]
+        # --- Source head (multi-source only) ---
+        if self.source_head is not None:
+            x = self.source_head(x)    # [B, S*n_stft_ch, freq_dim, T]
 
         # --- Output: mask or denorm, then iSTFT ---
         S = len(self.sources)

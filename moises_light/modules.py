@@ -25,7 +25,7 @@ class SplitModule(nn.Module):
         self.conv = nn.Conv2d(c_in, c_out, (kernel_size, 1), stride=1,
                               padding=(kernel_size // 2, 0), groups=n_bands)
         self.bn = norm(c_out)
-        self.act = act
+        self.act = act()
     
     def forward(self, x):  # [B, C, F_band, T] -> [B, C_out, F_band, T]
         return self.act(self.bn(self.conv(x).contiguous()))
@@ -42,7 +42,7 @@ class TDF(nn.Module):
         self.bn1 = norm(channels)
         self.fc2 = nn.Linear(freq_dim // bn_factor, freq_dim, bias=bias)
         self.bn2 = norm(channels)
-        self.act = act
+        self.act = act()
 
     def forward(self, x):  # [B, C, F_band, T]
         # Transpose F<->T so Linear acts on freq (last dim)
@@ -89,7 +89,7 @@ class TimeDownsample(nn.Module):
         super().__init__()
         self.conv = nn.Conv2d(c_in, c_out, kernel_size=(1, 2), stride=(1, 2))
         self.bn = norm(c_out)
-        self.act = act
+        self.act = act()
 
     def forward(self, x):  # [B, C_in, F, T] -> [B, C_out, F, T//2]
         return self.act(self.bn(self.conv(x).contiguous()))
@@ -102,7 +102,7 @@ class TimeUpsample(nn.Module):
         super().__init__()
         self.conv = nn.ConvTranspose2d(c_in, c_out, kernel_size=(1, 2), stride=(1, 2))
         self.bn = norm(c_out)
-        self.act = act
+        self.act = act()
 
     def forward(self, x):  # [B, C_in, F, T] -> [B, C_out, F, T*2]
         return self.act(self.bn(self.conv(x).contiguous()))

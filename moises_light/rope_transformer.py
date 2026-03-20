@@ -63,7 +63,6 @@ class Attention(Module):
             nn.Linear(dim_inner, dim, bias=False),
             nn.Dropout(proj_dropout),
         )
-        nn.init.zeros_(self.to_out[0].weight)
 
     def forward(self, x):
         x = self.norm(x)

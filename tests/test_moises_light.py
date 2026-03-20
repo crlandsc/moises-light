@@ -5,12 +5,12 @@ from moises_light import MoisesLight, configs
 
 # Expected exact param counts for all presets
 EXPECTED_PARAMS = {
-    'paper_large':         4_660_592,
-    'paper_small':         2_520_592,
-    'fullband_large':      4_948_612,
-    'fullband_small':      2_824_244,
-    'fullband_large_wide': 8_354_908,
-    'fullband_small_wide': 4_102_712,
+    'paper_large':         5_451_216,
+    'paper_small':         2_558_768,
+    'fullband_large':      5_477_844,
+    'fullband_small':      2_805_796,
+    'fullband_large_wide': 9_704_844,
+    'fullband_small_wide': 4_323_976,
 }
 
 

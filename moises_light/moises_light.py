@@ -119,7 +119,7 @@ class MoisesLight(nn.Module):
         self.register_buffer('freq_pad', torch.zeros(1, n_stft_channels, n_bins - freq_dim, 1))
 
         # --- First conv: SplitModule (expand channels) ---
-        self.first_conv = SplitModule(n_stft_channels * n_bands, G, n_bands, kernel_size=edge_kernel_size, norm, act)
+        self.first_conv = SplitModule(n_stft_channels * n_bands, G, n_bands, kernel_size=edge_kernel_size, norm=norm, act=act)
 
         # --- Encoder: N_enc blocks of SplitAndMerge + TimeDown ---
         self.encoder_blocks = nn.ModuleList()

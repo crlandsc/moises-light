@@ -66,8 +66,8 @@ Faithful to the paper's architecture. Frequencies above ~14.7 kHz are zeroed.
 
 | Preset        | G   | Bands | Per-group ch | Freq coverage | Params    |
 | ------------- | --- | ----- | ------------ | ------------- | --------- |
-| `paper_large` | 56  | 4     | 14           | 0-14.7 kHz    | 4,660,592 |
-| `paper_small` | 32  | 4     | 8            | 0-14.7 kHz    | 2,520,592 |
+| `paper_large` | 56  | 4     | 14           | 0-14.7 kHz    | 5,451,216 |
+| `paper_small` | 32  | 4     | 8            | 0-14.7 kHz    | 2,558,768 |
 
 ### Fullband Matched-Param (full spectrum, 0-22 kHz, similar param budget)
 
@@ -75,8 +75,8 @@ Full spectrum via 6 bands of 512 bins (`freq_dim=3072`). G adjusted to keep para
 
 | Preset           | G   | Bands | Per-group ch | Freq coverage | Params    |
 | ---------------- | --- | ----- | ------------ | ------------- | --------- |
-| `fullband_large` | 60  | 6     | 10           | 0-22 kHz      | 4,948,612 |
-| `fullband_small` | 36  | 6     | 6            | 0-22 kHz      | 2,824,244 |
+| `fullband_large` | 60  | 6     | 10           | 0-22 kHz      | 5,477,844 |
+| `fullband_small` | 36  | 6     | 6            | 0-22 kHz      | 2,805,796 |
 
 ### Fullband Wide (full spectrum, 0-22 kHz, matched per-group capacity)
 
@@ -84,8 +84,8 @@ Full spectrum with the same per-group channel capacity as the paper models.
 
 | Preset                | G   | Bands | Per-group ch | Freq coverage | Params    |
 | --------------------- | --- | ----- | ------------ | ------------- | --------- |
-| `fullband_large_wide` | 84  | 6     | 14           | 0-22 kHz      | 8,354,908 |
-| `fullband_small_wide` | 48  | 6     | 8            | 0-22 kHz      | 4,102,712 |
+| `fullband_large_wide` | 84  | 6     | 14           | 0-22 kHz      | 9,704,844 |
+| `fullband_small_wide` | 48  | 6     | 8            | 0-22 kHz      | 4,323,976 |
 
 ## Architecture
 
@@ -114,6 +114,8 @@ This is an independent implementation — the paper does not release code. The f
 
 - **Z-score normalization**: The paper does not mention input normalization. I apply Z-score normalization (zero mean, unit variance) to the STFT features before the U-Net, inspired by [HTDemucs](https://arxiv.org/abs/2211.08553)-style preprocessing. This is standard practice in similar architectures and stabilizes training.
 
+- **TDF bottleneck factor (`bn_factor`)**: The paper does not specify this parameter. [DTTNet](https://arxiv.org/abs/2309.08684) uses `bn_factor=8` for vocals, drums, and other, and `bn_factor=2` for bass (bass has narrower frequency range and more tonal structure, benefiting from higher TDF capacity). This implementation defaults to `bn_factor=8` to match DTTNet's majority-stem setting. For single-stem bass models, consider `bn_factor=2`.
+
 - **Multi-stem output**: The paper trains separate per-stem models (4x ~5M params for VDBO). This implementation outputs all stems simultaneously via a shared encoder and source head, as this paradigm has proven effective in other U-Net models like [HTDemucs](https://arxiv.org/abs/2211.08553) and [SCNet](https://arxiv.org/abs/2401.13276). To reproduce the paper's approach, train 4 separate single-stem models (e.g., `MoisesLight(sources=['vocals'])`).
 
 ## Key Parameters
@@ -127,7 +129,7 @@ This is an independent implementation — the paper does not release code. The f
 | `n_rope`                      | Number of dual-path RoPE transformer blocks in bottleneck          | Paper large: 5, paper small: 6                      |
 | `n_enc` / `n_dec`             | Encoder stages / heavy decoder stages                              | Asymmetric: `n_dec < n_enc` saves params            |
 | `n_split_enc` / `n_split_dec` | Number of group conv layers per SplitAndMerge block                | Controls depth within each stage                    |
-| `bn_factor`                   | TDF bottleneck factor (freq_dim -> freq_dim/bn_factor -> freq_dim) | Higher = more compression                           |
+| `bn_factor`                   | TDF bottleneck factor (freq_dim -> freq_dim/bn_factor -> freq_dim) | Default: 8. DTTNet uses 2 for bass                  |
 
 ## Integration
 

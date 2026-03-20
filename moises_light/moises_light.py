@@ -139,7 +139,7 @@ class MoisesLight(nn.Module):
         }
         tp = transformer_params if transformer_params is not None else default_tp
         self.bottleneck = DualPathRoPEBottleneck(
-            c, n_bands, n_split_enc, freq_band, bn_factor, n_rope, tp
+            c, n_bands, n_split_enc, freq_band, bn_factor, n_rope, tp, norm, act
         )
 
         # --- Decoder (asymmetric): n_dec heavy + (n_enc - n_dec) light ---

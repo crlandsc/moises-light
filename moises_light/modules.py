@@ -22,8 +22,8 @@ class SplitModule(nn.Module):
         super().__init__()
         assert c_in % n_bands == 0 and c_out % n_bands == 0, \
             f"Channels must be divisible by n_bands={n_bands}: c_in={c_in}, c_out={c_out}"
-        self.conv = nn.Conv2d(c_in, c_out, (kernel_size, 1), stride=1,
-                              padding=(kernel_size // 2, 0), groups=n_bands)
+        self.conv = nn.Conv2d(c_in, c_out, kernel_size, stride=1,
+                              padding=kernel_size // 2, groups=n_bands)
         self.bn = nn.BatchNorm2d(c_out)
 
     def forward(self, x):  # [B, C, F_band, T] -> [B, C_out, F_band, T]

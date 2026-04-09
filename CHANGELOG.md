@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5 (2026-04-09)
+
+- Add configurable normalization layers (`norm_name`: BatchNorm, InstanceNorm, LayerNorm) and activation functions (`act_name`: ReLU, GELU, LeakyReLU, SiLU, Mish, Softplus) across all modules
+- Defaults unchanged (BatchNorm + ReLU) — fully backward-compatible with v0.1.4 weights
+- Contributed by [@pcunwa](https://github.com/pcunwa) in [#1](https://github.com/crlandsc/moises-light/pull/1)
+
 ## 0.1.4 (2026-03-20)
 
 - **BREAKING**: Architecture fixes — pretrained weights from v0.1.3 and earlier are incompatible

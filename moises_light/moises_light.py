@@ -16,6 +16,35 @@ import torch.nn.functional as F
 from .modules import SplitModule, SplitAndMergeModule, TimeDownsample, TimeUpsample
 from .bottleneck import DualPathRoPEBottleneck
 
+from functools import partial
+
+def get_norm(norm_name):
+    def norm(channels, norm_name):
+        if norm_name == 'BatchNorm':
+            return nn.BatchNorm2d(channels)
+        elif norm_name == 'InstanceNorm':
+            return nn.InstanceNorm2d(channels, affine=True)
+        elif norm_name == 'LayerNorm':
+            return nn.GroupNorm(num_groups=1, num_channels=channels)
+        else:
+            raise Exception
+    return partial(norm, norm_name=norm_name)
+
+def get_act(act_name):
+    if act_name == 'GELU':
+        return nn.GELU
+    elif act_name == 'ReLU':
+        return nn.ReLU
+    elif act_name == 'LeakyReLU':
+        return nn.LeakyReLU
+    elif act_name == 'Softplus':
+        return nn.Softplus
+    elif act_name == 'SiLU':
+        return nn.SiLU
+    elif act_name == 'Mish':
+        return nn.Mish
+    else:
+        raise Exception
 
 class MoisesLight(nn.Module):
     def __init__(
@@ -38,6 +67,8 @@ class MoisesLight(nn.Module):
         transformer_params=None,
         normalized=True,
         use_mask=True,
+        norm_name='BatchNorm',
+        act_name='ReLU'
     ):
         super().__init__()
 
@@ -64,6 +95,9 @@ class MoisesLight(nn.Module):
         n_bins = n_fft // 2 + 1               # 3073 for n_fft=6144
         freq_band = freq_dim // n_bands        # 512
 
+        norm = get_norm(norm_name)
+        act = get_act(act_name)
+
         # Frequency truncation tradeoff:
         # STFT produces n_bins bins, but only freq_dim are kept (rest zero-padded
         # for iSTFT). E.g. paper presets: 2048/3073 bins ~ 14.7 kHz cutoff;
@@ -85,7 +119,7 @@ class MoisesLight(nn.Module):
         self.register_buffer('freq_pad', torch.zeros(1, n_stft_channels, n_bins - freq_dim, 1))
 
         # --- First conv: SplitModule (expand channels) ---
-        self.first_conv = SplitModule(n_stft_channels * n_bands, G, n_bands, kernel_size=edge_kernel_size)
+        self.first_conv = SplitModule(n_stft_channels * n_bands, G, n_bands, kernel_size=edge_kernel_size, norm=norm, act=act)
 
         # --- Encoder: N_enc blocks of SplitAndMerge + TimeDown ---
         self.encoder_blocks = nn.ModuleList()
@@ -93,9 +127,9 @@ class MoisesLight(nn.Module):
         c = G
         for i in range(n_enc):
             self.encoder_blocks.append(
-                SplitAndMergeModule(c, n_bands, n_split_enc, freq_band, bn_factor)
+                SplitAndMergeModule(c, n_bands, n_split_enc, freq_band, bn_factor, norm, act)
             )
-            self.ds.append(TimeDownsample(c, c + G))
+            self.ds.append(TimeDownsample(c, c + G, norm, act))
             c += G
 
         # --- Bottleneck ---
@@ -105,23 +139,24 @@ class MoisesLight(nn.Module):
             'flash_attn': True,
         }
         tp = transformer_params if transformer_params is not None else default_tp
-        self.bottleneck = DualPathRoPEBottleneck(c, n_bands, n_split_enc, freq_band, bn_factor, n_rope, tp)
+
+        self.bottleneck = DualPathRoPEBottleneck(c, n_bands, n_split_enc, freq_band, bn_factor, n_rope, tp, norm, act)
 
         # --- Decoder (asymmetric): n_dec heavy + (n_enc - n_dec) light ---
         # Heavy stages (deepest, with SplitAndMerge processing)
         self.dec_heavy_us = nn.ModuleList()
         self.dec_heavy_blocks = nn.ModuleList()
         for i in range(n_dec):
-            self.dec_heavy_us.append(TimeUpsample(c, c - G))
+            self.dec_heavy_us.append(TimeUpsample(c, c - G, norm, act))
             c -= G
             self.dec_heavy_blocks.append(
-                SplitAndMergeModule(c, n_bands, n_split_dec, freq_band, bn_factor)
+                SplitAndMergeModule(c, n_bands, n_split_dec, freq_band, bn_factor, norm, act)
             )
 
         # Light stages (just upsample + skip, no SplitAndMerge)
         self.dec_light_us = nn.ModuleList()
         for i in range(n_enc - n_dec):
-            self.dec_light_us.append(TimeUpsample(c, c - G))
+            self.dec_light_us.append(TimeUpsample(c, c - G, norm, act))
             c -= G
 
         # --- Final conv: SplitModule (reduce channels) ---

@@ -18,16 +18,18 @@ import torch.nn.functional as F
 class SplitModule(nn.Module):
     """Group conv with n_bands groups. K=1 for projections, K=3 for processing."""
 
-    def __init__(self, c_in, c_out, n_bands, kernel_size=1):
+    def __init__(self, c_in, c_out, n_bands, norm, act, kernel_size=1):
         super().__init__()
         assert c_in % n_bands == 0 and c_out % n_bands == 0, \
             f"Channels must be divisible by n_bands={n_bands}: c_in={c_in}, c_out={c_out}"
+
         self.conv = nn.Conv2d(c_in, c_out, kernel_size, stride=1,
                               padding=kernel_size // 2, groups=n_bands)
-        self.bn = nn.BatchNorm2d(c_out)
-
+        self.bn = norm(c_out)
+        self.act = act()
+    
     def forward(self, x):  # [B, C, F_band, T] -> [B, C_out, F_band, T]
-        return F.relu(self.bn(self.conv(x).contiguous()))
+        return self.act(self.bn(self.conv(x).contiguous()))
 
 
 class TDF(nn.Module):
@@ -35,18 +37,19 @@ class TDF(nn.Module):
     Linear bottleneck on frequency axis: freq -> freq//bn -> freq.
     """
 
-    def __init__(self, channels, freq_dim, bn_factor, bias=True):
+    def __init__(self, channels, freq_dim, bn_factor, norm, act, bias=True):
         super().__init__()
         self.fc1 = nn.Linear(freq_dim, freq_dim // bn_factor, bias=bias)
-        self.bn1 = nn.BatchNorm2d(channels)
+        self.bn1 = norm(channels)
         self.fc2 = nn.Linear(freq_dim // bn_factor, freq_dim, bias=bias)
-        self.bn2 = nn.BatchNorm2d(channels)
+        self.bn2 = norm(channels)
+        self.act = act()
 
     def forward(self, x):  # [B, C, F_band, T]
         # Transpose F<->T so Linear acts on freq (last dim)
         x = x.transpose(-1, -2).contiguous()  # [B, C, T, F]
-        x = F.relu(self.bn1(self.fc1(x).contiguous()))
-        x = F.relu(self.bn2(self.fc2(x).contiguous()))
+        x = self.act(self.bn1(self.fc1(x).contiguous()))
+        x = self.act(self.bn2(self.fc2(x).contiguous()))
         return x.transpose(-1, -2).contiguous()  # [B, C, F_band, T]
 
 
@@ -60,15 +63,15 @@ class SplitAndMergeModule(nn.Module):
     x = x + res                          # outer residual
     """
 
-    def __init__(self, channels, n_bands, n_split, freq_dim, bn_factor, bias=True):
+    def __init__(self, channels, n_bands, n_split, freq_dim, bn_factor, norm, act, bias=True):
         super().__init__()
-        self.res = SplitModule(channels, channels, n_bands, kernel_size=3)
+        self.res = SplitModule(channels, channels, n_bands, norm, act, kernel_size=3)
         self.split1 = nn.Sequential(
-            *[SplitModule(channels, channels, n_bands, kernel_size=3) for _ in range(n_split)]
+            *[SplitModule(channels, channels, n_bands, norm, act, kernel_size=3) for _ in range(n_split)]
         )
-        self.tdf = TDF(channels, freq_dim, bn_factor, bias)
+        self.tdf = TDF(channels, freq_dim, bn_factor, norm, act, bias)
         self.split2 = nn.Sequential(
-            *[SplitModule(channels, channels, n_bands, kernel_size=3) for _ in range(n_split)]
+            *[SplitModule(channels, channels, n_bands, norm, act, kernel_size=3) for _ in range(n_split)]
         )
 
     def forward(self, x):  # [B, C, F_band, T] -> [B, C, F_band, T]
@@ -83,22 +86,24 @@ class SplitAndMergeModule(nn.Module):
 class TimeDownsample(nn.Module):
     """Halves T, changes channels. Stride only on time axis."""
 
-    def __init__(self, c_in, c_out):
+    def __init__(self, c_in, c_out, norm, act):
         super().__init__()
         self.conv = nn.Conv2d(c_in, c_out, kernel_size=(1, 2), stride=(1, 2))
-        self.bn = nn.BatchNorm2d(c_out)
+        self.bn = norm(c_out)
+        self.act = act()
 
     def forward(self, x):  # [B, C_in, F, T] -> [B, C_out, F, T//2]
-        return F.relu(self.bn(self.conv(x).contiguous()))
+        return self.act(self.bn(self.conv(x).contiguous()))
 
 
 class TimeUpsample(nn.Module):
     """Doubles T, changes channels. Stride only on time axis."""
 
-    def __init__(self, c_in, c_out):
+    def __init__(self, c_in, c_out, norm, act):
         super().__init__()
         self.conv = nn.ConvTranspose2d(c_in, c_out, kernel_size=(1, 2), stride=(1, 2))
-        self.bn = nn.BatchNorm2d(c_out)
+        self.bn = norm(c_out)
+        self.act = act()
 
     def forward(self, x):  # [B, C_in, F, T] -> [B, C_out, F, T*2]
-        return F.relu(self.bn(self.conv(x).contiguous()))
+        return self.act(self.bn(self.conv(x).contiguous()))

@@ -110,7 +110,7 @@ This is an independent implementation — the paper does not release code. The f
 
 - **Transformer hyperparameters**: The paper does not specify the RoPE transformer's internal dimensions. I use `heads=4, dim_head=32, ff_mult=2` — chosen to keep the bottleneck lightweight and consistent with the model's parameter budget.
 
-- **Multiplicative masking**: The paper states the model "directly generating the separated target spectrogram." By default (`use_mask=True`), our implementation applies multiplicative masking on the original STFT (i.e., the network predicts a mask rather than the spectrogram directly). This is a common and effective approach in other SOTA models like [BS-RoFormer](https://arxiv.org/abs/2309.02612) and often leads to better perceptual quality, particularly for silent segments. Setting `use_mask=False` switches to the paper's direct spectrogram generation mode, where the network output produces spectrograms directly.
+- **Multiplicative masking**: The paper states that the model directly generates the separated target spectrogram. By default (`use_mask=True`), our implementation applies multiplicative masking on the original STFT (i.e., the network predicts a mask rather than the spectrogram directly). This is a common and effective approach in other SOTA models like [BS-RoFormer](https://arxiv.org/abs/2309.02612) and often leads to better perceptual quality, particularly for silent segments. Setting `use_mask=False` switches to the paper's direct spectrogram generation mode, where the network output produces spectrograms directly.
 
 - **Z-score normalization**: The paper does not mention input normalization. I apply Z-score normalization (zero mean, unit variance) to the STFT features before the U-Net, inspired by [HTDemucs](https://arxiv.org/abs/2211.08553)-style preprocessing. This is standard practice in similar architectures and stabilizes training.
 
@@ -173,4 +173,4 @@ Contributions are welcome! Please open an issue or submit a pull request if you 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
